@@ -12,7 +12,7 @@ of the changes include:
 ### How to Play
 
 - Download the repo
-- Run `python3 dragon_vs_robots.py
+- Run `python3 dragon_vs_robots.py`
 
 ### Known bugs / todos
 

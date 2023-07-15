@@ -7,6 +7,7 @@ class Scoreboard:
         self.screen_rect = ai_game.screen.get_rect()
         self.settings = ai_game.settings
         self.stats = ai_game.stats
+        self.player_super_bullets = 0
 
         # Font settings for scoring
         self.text_color = (30, 30, 30)
@@ -14,10 +15,12 @@ class Scoreboard:
         self.font_large = pygame.font.SysFont(None, 72)
 
         self.render_lives()
+        self.render_super_bullets()
         self.render_score()
 
     def draw(self):
         self.screen.blit(self.lives_image, self.lives_rect)
+        self.screen.blit(self.bullets_image, self.bullets_rect)
         self.screen.blit(self.score_image, self.score_rect)
 
     def render_lives(self):
@@ -30,6 +33,17 @@ class Scoreboard:
         self.lives_rect = self.lives_image.get_rect()
         self.lives_rect.left = self.lives_rect.left + self.settings.margin
         self.lives_rect.top = self.settings.margin
+
+    def render_super_bullets(self):
+        bullets_str = ''
+        for i in range(self.player_super_bullets):
+            bullets_str += 'o'
+        self.bullets_image = self.font_large.render(bullets_str, True, self.text_color, self.settings.bg_color)
+
+        # Display lives at top left of screen
+        self.bullets_rect = self.bullets_image.get_rect()
+        self.bullets_rect.left = self.bullets_rect.left + self.settings.margin
+        self.bullets_rect.top = self.settings.margin + 25
 
     def render_score(self):
         """ Turn score into rendered image """

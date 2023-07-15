@@ -1,8 +1,10 @@
+import random
 import sys
 from time import sleep
 
 import pygame
 
+from models.sprites.boss_bullet import BossBullet
 from models.sprites.bullet import Bullet
 from models.sprites.player import Player
 from models.sprites.robot import Robot
@@ -34,6 +36,7 @@ class DragonVsRobots:
         self.robots = pygame.sprite.Group()
         self.fired_bullets = pygame.sprite.Group()
         self.collectible_bullets = pygame.sprite.Group()
+        self.boss_bullets = pygame.sprite.Group()
 
         self._create_fleet()
 
@@ -54,11 +57,13 @@ class DragonVsRobots:
                 self._check_player_hit()
                 self._check_enemy_hit()
                 self._check_boss_hit()
+                self._check_bullet_hit()
                 # Check for edges
                 self._check_robots_edge()
                 self._check_bullets_edge()
                 # Check for game
                 self._check_boss_time()
+                self._check_boss_fire_bullet()
             self._update_screen()
 
     def _create_fleet(self):
@@ -147,6 +152,10 @@ class DragonVsRobots:
         self.stats.set_game()
         self._reset_board()
 
+    def _update_scoreboard_super_bullets(self):
+        self.scoreboard.player_super_bullets = self.player.inv_super_bullets
+        self.scoreboard.render_super_bullets()
+
     def _update_screen(self):
         #Redraw the screen during each pass
         self.screen.fill(self.settings.bg_color)
@@ -154,6 +163,7 @@ class DragonVsRobots:
         self.player.draw()
         self.fired_bullets.draw(self.screen)
         self.collectible_bullets.draw(self.screen)
+        self.boss_bullets.draw(self.screen)
         self.robots.draw(self.screen)
         self.boss.draw()
         self.scoreboard.draw()
@@ -184,6 +194,7 @@ class DragonVsRobots:
     def _collect_super_bullet(self, super_bullet):
         self.collectible_bullets.remove(super_bullet)
         self.player.inv_super_bullets += 1
+        self._update_scoreboard_super_bullets()
 
     def _fire_super_bullet(self):
         if self.stats.game_active and self.player.inv_super_bullets > 0:
@@ -191,11 +202,19 @@ class DragonVsRobots:
             fired_super_bullet.set_pos_from_player(self.player.rect)
             self.fired_bullets.add(fired_super_bullet)
             self.player.inv_super_bullets -= 1
+            self._update_scoreboard_super_bullets()
+
+    def _fire_boss_bullet(self):
+        fired_boss_bullet = BossBullet(self)
+        fired_boss_bullet.set_pos(self.boss.rect)
+        self.boss_bullets.add(fired_boss_bullet)
+
 
     def _update_bullets(self):
         #Update bullet positions
         self.fired_bullets.update()
         self.collectible_bullets.update()
+        self.boss_bullets.update()
 
     def _update_robots(self):
         self.settings.fleet_cur_shift_cycles += 1
@@ -228,8 +247,19 @@ class DragonVsRobots:
             self._collect_super_bullet(collected_bullet)
 
     def _check_player_hit(self):
+        # If you hit a robot
         if pygame.sprite.spritecollideany(self.player, self.robots):
             self._lose_life()
+
+        # If you hit a boss bullet
+        boss_bullet = pygame.sprite.spritecollideany(self.player, self.boss_bullets)
+        if boss_bullet:
+            self.boss_bullets.remove(boss_bullet)
+            self._lose_life()
+
+    def _check_bullet_hit(self):
+        # Remove any collided bullets and bullets
+        pygame.sprite.groupcollide(self.fired_bullets, self.boss_bullets, True, True)
 
     def _check_enemy_hit(self):
         # Remove any collided robots and bullets
@@ -263,9 +293,19 @@ class DragonVsRobots:
                 self.fired_bullets.remove(bullet)
                 self.scoreboard.update_score(self.settings.miss_points)
 
+        for bullet in self.boss_bullets.copy():
+            if bullet.rect.left < 0:
+                self.boss_bullets.remove(bullet)
+
     def _check_boss_time(self):
         if len(self.robots) == 0 and len(self.collectible_bullets) == 0:
             self._make_super_bullet()
+
+    def _check_boss_fire_bullet(self):
+        if len(self.robots) == 0:
+            rand = random.randint(0, 150)
+            if rand < 1:
+                self._fire_boss_bullet()
 
     def _win_game(self):
         self.play_button = Button(self, "You Win! Play Again")
@@ -296,6 +336,10 @@ class DragonVsRobots:
     def _reset_board(self):
         self.robots.empty()
         self.fired_bullets.empty()
+        self.collectible_bullets.empty()
+        self.boss_bullets.empty()
+        self.player.inv_super_bullets = 0
+        self.stats.player_life_left = self.settings.player_hit_limit
         self.scoreboard.reset_score()
         self.scoreboard.draw()
 
